@@ -1,9 +1,47 @@
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, viewsets
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from django.contrib.auth.models import User
-from .serializers import UserSerializer
+from .serializers import UserSerializer, WorkplaceSerializer, RiderProfileSerializer
+from .models import Workplace, RiderProfile
+
+class IsAdminOrReadOnly(permissions.BasePermission):
+    """
+    Custom permission to only allow admins to edit objects.
+    Read-only access is allowed for any authenticated user.
+    """
+    def has_permission(self, request, view):
+        # Read permissions are allowed to any authenticated user
+        if request.method in permissions.SAFE_METHODS:
+            return request.user and request.user.is_authenticated
+
+        # Write permissions are only allowed to admin users
+        return request.user and request.user.is_staff
+
+
+class WorkplaceViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows workplaces to be viewed or edited.
+    """
+    queryset = Workplace.objects.all()
+    serializer_class = WorkplaceSerializer
+    permission_classes = [IsAdminOrReadOnly]
+
+
+class RiderProfileView(generics.RetrieveUpdateAPIView):
+    """
+    API endpoint for the current user to retrieve and update their Rider Profile.
+    """
+    serializer_class = RiderProfileSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self):
+        # It's possible the user is a driver and doesn't have a rider profile.
+        # We create one if it doesn't exist.
+        profile, created = RiderProfile.objects.get_or_create(user=self.request.user)
+        return profile
+
 
 class RegisterView(generics.CreateAPIView):
     """

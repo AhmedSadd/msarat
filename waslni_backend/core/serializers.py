@@ -1,6 +1,16 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import RiderProfile, DriverProfile
+from .models import RiderProfile, DriverProfile, Workplace
+
+class WorkplaceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Workplace
+        fields = '__all__'
+
+class RiderProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RiderProfile
+        fields = ('home_address', 'home_latitude', 'home_longitude', 'workplace')
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)

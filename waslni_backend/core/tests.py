@@ -4,6 +4,95 @@ from rest_framework.test import APITestCase
 from rest_framework import status
 from django.contrib.auth.models import User
 
+from .models import Workplace
+
+class WorkplaceAPITest(APITestCase):
+    """
+    Test suite for the Workplace API.
+    """
+    def setUp(self):
+        # Create a regular user (rider)
+        self.user = User.objects.create_user(username='rider', password='password123')
+
+        # Create an admin user
+        self.admin_user = User.objects.create_superuser(username='admin', password='password123', email='admin@example.com')
+
+        # Create a workplace instance to be used in tests
+        self.workplace = Workplace.objects.create(name='Test Corp', address='123 Test St', latitude=1.0, longitude=1.0)
+
+    def test_list_workplaces_authenticated(self):
+        """Ensure any authenticated user can list workplaces."""
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(reverse('workplace-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+
+    def test_list_workplaces_unauthenticated(self):
+        """Ensure unauthenticated users cannot list workplaces."""
+        response = self.client.get(reverse('workplace-list'))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_create_workplace_as_admin(self):
+        """Ensure admin can create a workplace."""
+        self.client.force_authenticate(user=self.admin_user)
+        data = {'name': 'NewCo', 'address': '456 New Ave', 'latitude': 2.0, 'longitude': 2.0}
+        response = self.client.post(reverse('workplace-list'), data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Workplace.objects.count(), 2)
+
+    def test_create_workplace_as_regular_user(self):
+        """Ensure regular user cannot create a workplace."""
+        self.client.force_authenticate(user=self.user)
+        data = {'name': 'NewCo', 'address': '456 New Ave', 'latitude': 2.0, 'longitude': 2.0}
+        response = self.client.post(reverse('workplace-list'), data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(Workplace.objects.count(), 1)
+
+
+from .models import RiderProfile
+
+class RiderProfileAPITest(APITestCase):
+    """
+    Test suite for the Rider Profile API.
+    """
+    def setUp(self):
+        self.user = User.objects.create_user(username='rider', password='password123')
+        self.workplace = Workplace.objects.create(name='Test Corp', address='123 Test St', latitude=1.0, longitude=1.0)
+        # The view now creates the profile on-the-fly, so we don't need to create it here.
+        # self.profile = RiderProfile.objects.create(user=self.user, home_address='555 Home St')
+
+    def test_get_profile_authenticated(self):
+        """Ensure authenticated user can retrieve their profile."""
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(reverse('rider-profile'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Check that a default profile was created
+        self.assertEqual(response.data['home_address'], '')
+
+    def test_get_profile_unauthenticated(self):
+        """Ensure unauthenticated user cannot retrieve a profile."""
+        response = self.client.get(reverse('rider-profile'))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_update_profile_authenticated(self):
+        """Ensure authenticated user can update their profile."""
+        self.client.force_authenticate(user=self.user)
+        data = {
+            'home_address': '987 New Home Lane',
+            'home_latitude': 3.0,
+            'home_longitude': 4.0,
+            'workplace': self.workplace.id
+        }
+        response = self.client.put(reverse('rider-profile'), data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['home_address'], '987 New Home Lane')
+
+        # Verify the change in the database
+        profile = RiderProfile.objects.get(user=self.user)
+        self.assertEqual(profile.home_address, '987 New Home Lane')
+        self.assertEqual(profile.workplace.id, self.workplace.id)
+
+
 class RegistrationAPITest(APITestCase):
     """
     Test suite for the user registration API endpoint.
