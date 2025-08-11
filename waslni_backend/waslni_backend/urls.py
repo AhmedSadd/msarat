@@ -6,6 +6,8 @@ from core import views as core_views
 # Create a router and register our viewsets with it.
 router = DefaultRouter()
 router.register(r'workplaces', core_views.WorkplaceViewSet, basename='workplace')
+router.register(r'drivers', core_views.DriverProfileViewSet, basename='driver')
+router.register(r'vehicles', core_views.VehicleViewSet, basename='vehicle')
 
 # The API URLs are now determined automatically by the router.
 urlpatterns = [

@@ -4,7 +4,7 @@ from rest_framework.test import APITestCase
 from rest_framework import status
 from django.contrib.auth.models import User
 
-from .models import Workplace
+from .models import Workplace, DriverProfile
 
 class WorkplaceAPITest(APITestCase):
     """
@@ -91,6 +91,66 @@ class RiderProfileAPITest(APITestCase):
         profile = RiderProfile.objects.get(user=self.user)
         self.assertEqual(profile.home_address, '987 New Home Lane')
         self.assertEqual(profile.workplace.id, self.workplace.id)
+
+
+class DriverAPITest(APITestCase):
+    """
+    Test suite for the Driver API.
+    """
+    def setUp(self):
+        self.regular_user = User.objects.create_user(username='rider', password='password123')
+        self.admin_user = User.objects.create_superuser(username='admin', password='password123')
+
+    def test_list_drivers_as_admin(self):
+        """Ensure admin can list drivers."""
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get(reverse('driver-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_list_drivers_as_regular_user(self):
+        """Ensure regular user cannot list drivers."""
+        self.client.force_authenticate(user=self.regular_user)
+        response = self.client.get(reverse('driver-list'))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_create_driver_as_admin(self):
+        """Ensure admin can create a new driver user and profile."""
+        self.client.force_authenticate(user=self.admin_user)
+        data = {
+            "username": "newdriver",
+            "email": "driver@example.com",
+            "password": "password123"
+        }
+        response = self.client.post(reverse('driver-list'), data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(User.objects.filter(username="newdriver").exists())
+        self.assertTrue(DriverProfile.objects.filter(user__username="newdriver").exists())
+
+
+from .models import Vehicle
+
+class VehicleAPITest(APITestCase):
+    """
+    Test suite for the Vehicle API.
+    """
+    def setUp(self):
+        self.admin_user = User.objects.create_superuser(username='admin', password='password123')
+        driver_user = User.objects.create_user(username='driver', password='password123')
+        self.driver_profile = DriverProfile.objects.create(user=driver_user)
+
+    def test_create_vehicle_as_admin(self):
+        """Ensure admin can create a vehicle."""
+        self.client.force_authenticate(user=self.admin_user)
+        data = {
+            "vehicle_type": "Van",
+            "capacity": 8,
+            "license_plate": "TEST-123",
+            "driver": self.driver_profile.id
+        }
+        response = self.client.post(reverse('vehicle-list'), data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Vehicle.objects.count(), 1)
+        self.assertEqual(Vehicle.objects.get().license_plate, "TEST-123")
 
 
 class RegistrationAPITest(APITestCase):

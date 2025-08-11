@@ -3,8 +3,24 @@ from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from django.contrib.auth.models import User
-from .serializers import UserSerializer, WorkplaceSerializer, RiderProfileSerializer
-from .models import Workplace, RiderProfile
+from .serializers import UserSerializer, WorkplaceSerializer, RiderProfileSerializer, DriverProfileSerializer, VehicleSerializer
+from .models import Workplace, RiderProfile, DriverProfile, Vehicle
+
+class DriverProfileViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for admins to manage driver profiles.
+    """
+    queryset = DriverProfile.objects.all()
+    serializer_class = DriverProfileSerializer
+    permission_classes = [permissions.IsAdminUser]
+
+class VehicleViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for admins to manage vehicles.
+    """
+    queryset = Vehicle.objects.all()
+    serializer_class = VehicleSerializer
+    permission_classes = [permissions.IsAdminUser]
 
 class IsAdminOrReadOnly(permissions.BasePermission):
     """
